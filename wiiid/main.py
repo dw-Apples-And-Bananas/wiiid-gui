@@ -3,39 +3,20 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import sys
 import json
 import os
-
-from pynput.keyboard import Key, KeyCode, Controller
+import time
 
 from menu import Menu
 from wiimote import Wiimote
 
-class Keyboard(Controller):
-    def __init__(self) -> None:
-        super().__init__()
-    
-    def tap(self, key: str | Key | KeyCode, mod: str | Key | KeyCode="") -> None:
-        if mod != "":
-            super().press(mod)
-            super().tap(key)
-            super().release(mod)
-        else:
-            super().tap(key)
-
-    def press(self, key: str | Key | KeyCode, mod: str | Key | KeyCode="") -> None:
-        if mod != "":
-            super().press(mod)
-            super().press(key)
-            super().release(mod)
-        else:
-            super().press(key)
-
+from controller import Keyboard, Key, KeyCode
 keyboard = Keyboard()
 
-MAP = {
-    "h": [["a"], 0, ""],
-    "=": [["^"], 0, "cmd"],
-    "-": [["v"], 0, "cmd"]
-}
+
+buttons = {}
+class Button:
+    def __init__(self, name:str, time:float=-1):
+        self.name = name
+        self.time = time
 
 class WiimoteWidget:
     def __init__(self) -> None:
@@ -99,15 +80,24 @@ class Window(QtWidgets.QWidget):
 
         # WIIMOTE
         self.wiimote = Wiimote()
+        self.buttons = {}
+        for btn in "ab12-+h<>^v":
+            self.buttons[btn] = Button(btn)
+        self.buttonsHeld = []
+        with open("wiiid/config.json", "r") as f:
+            self.config = json.load(f)
+        
+        # self.connect_wiimote()
 
     @QtCore.Slot()
     def connect_wiimote(self):
         self.wiimote.data.connect(self.process_wiimote_data)
+        time.sleep(1)
         self.wiimote.start()
 
     def process_wiimote_data(self, data):
         data = json.loads(data)
-        self.text.setText(str(data["a"]))
+
         for button in self.wiimoteWidget.selected.keys():
             if button in ["<", ">", "^", "v"]:
                 unselected = self.wiimoteWidget.unselected["dpad"]
@@ -121,17 +111,85 @@ class Window(QtWidgets.QWidget):
                 selected.setVisible(False)
                 unselected.setVisible(True)
 
-        for key, value in MAP.items():
-            btns = value[0]
-            pressed = value[1]
-            mod = value[2]
-            for btn in btns:
-                if data[btn] == 1 and not pressed:
-                    MAP[key] = [btns, 1]
-                    keyboard.press(key, mod)
-                elif data[btn] == 0 and pressed:
-                    MAP[key] = [btns, 0]
-                    keyboard.release(key)
+        for btn, value in data.items():
+            button = self.buttons[btn]
+            if value == 1 and button.time == -1:
+                # PRESSED
+                button.time = time.time()
+            if value == 0 and button.time != -1:
+                # RELEASED
+                if time.time()-button.time < .5:
+                    # TAPPED
+                    held = ""
+                    for b, v in data.items():
+                        if v == 1:
+                            self.buttons[b].time = -3
+                            held += b
+                    # print("held:"+str(held)+" tapped:"+btn)
+                    if held != "":
+                        conf = self.config["hold+tap"][held][btn]
+                        print(conf)
+                        if conf["action"] == "tap":
+                            print(*conf["args"])
+                            keyboard.tap(**conf["args"])
+                            
+                button.time = -1
+            
+            if button.time != -1 and button.time != -2 and time.time()-button.time > .5:
+                button.time = -2
+                print("HOLDING", btn)
+
+
+
+            # print(btn, value)
+            # button = self.buttons[btn]
+            # if value == 1 and not button.pressed:
+            #     button.pressed = True
+            #     button.time = time.time()
+            # elif value == 0 and button.pressed:
+            #     if time.time()-button.time < .5:
+            #         button.tapped = True
+            #     button.time = 0
+            #     button.pressed = False
+            #     button.holding = False
+            #     self.buttonsHeld.remove(button)
+            # if time.time()-button.time > .5 and not button.holding:
+            #     button.holding = True
+            #     self.buttonsHeld.append(button)
+            
+            # if button.tapped:
+            #     button.tapped = False
+            #     print(button.name, button.tapped)
+            
+            # if button.holding:
+            #     print(button.name, button.holding)
+
+            
+
+            # print(button.name, button.pressed, button.tapped, button.holding, button.time)
+            # print(" ".join([i.name for i in self.buttonsHeld]))
+            
+
+        # for btn in data.keys():
+        #     if data[btn] == 1:
+        #         self.buttonTime[btn] += 1
+        #         self.buttonsHeld.append(btn)
+        #     else:
+        #         self.buttonTime[btn] = 0
+        #         self.buttonsHeld = []
+        #     print(self.buttonsHeld)
+
+
+            # btns = value[0]
+            # pressed = value[1]
+            # mod = value[2]
+            # for btn in btns:
+            #     if data[btn] == 1 and not pressed:
+            #         MAP[key] = [btns, 1]
+            #         keyboard.press(key, mod)
+            #     elif data[btn] == 0 and pressed:
+            #         MAP[key] = [btns, 0]
+            #         keyboard.release(key)
 
     
     def close(self):
@@ -146,7 +204,7 @@ if __name__ == "__main__":
 
     widget = Window()
     widget.resize(800, 600)
-    widget.showMaximized()
+    widget.show()
 
     Menu(widget).run()
 

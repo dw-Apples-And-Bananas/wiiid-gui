@@ -5,8 +5,8 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 class Wiimote(QThread):
     data = Signal(str)
-
     usb:serial.Serial
+
     def __init__(self):
         super().__init__()
 
@@ -17,7 +17,7 @@ class Wiimote(QThread):
             if read.startswith("r"):
                 read = read[1::]
                 self.data.emit(str(read))
-                print(read)
+                # print(read)
 
     def run(self):
         self.do_work()

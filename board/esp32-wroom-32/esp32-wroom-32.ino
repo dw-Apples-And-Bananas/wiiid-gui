@@ -69,9 +69,9 @@ void loop()
             Serial.printf("r{\"a\":%d,\"b\":%d,\"1\":%d,\"2\":%d,\"-\":%d,\"+\":%d,\"h\":%d,\"<\":%d,\">\":%d,\"^\":%d,\"v\":%d}\n",
                                   ia,      ib,      i1,      i2,      iminus,  iplus,   ihome,   ileft,   iright,  iup,     idown);
               
-            if (iright == 1) {
-              wiimote.setLED(2);
-            }
+            // if (iright == 1) {
+            //   wiimote.setLED(2);
+            // }
         }
     }
 

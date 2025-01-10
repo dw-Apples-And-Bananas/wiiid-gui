@@ -1,7 +1,16 @@
 {
   "tap": {
-    ""
-    "action": "tap",
-    "args": [[], ""]
+  },
+
+  "hold+tap": {
+    "b": {
+      "<": {
+        "action": "tap",
+        "args": {
+          "key": "z",
+          "mod": "cmd"
+        }
+      }
+    }
   }
 }
