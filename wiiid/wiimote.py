@@ -13,8 +13,9 @@ class Wiimote(QThread):
     def do_work(self):
         self.usb = serial.Serial(port="/dev/cu.usbserial-0001", baudrate=115200)
         while True:
-            read = self.usb.readline()
-            if read:
+            read = str(self.usb.readline().strip(b"\n"))[2:-1]
+            if read.startswith("r"):
+                read = read[1::]
                 self.data.emit(str(read))
                 print(read)
 
